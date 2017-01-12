@@ -60,6 +60,7 @@ HID_KEYBD_Info_TypeDef* kb_info;
 /* USER CODE BEGIN 0 */
 void USBH_HID_EventCallback(USBH_HandleTypeDef *phost) {
 	Increase();
+
 }
 /* USER CODE END 0 */
 
