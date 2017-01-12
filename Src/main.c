@@ -53,7 +53,7 @@
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
-UART_HandleTypeDef huart3;
+
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/

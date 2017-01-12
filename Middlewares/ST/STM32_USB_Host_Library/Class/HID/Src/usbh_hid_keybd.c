@@ -31,6 +31,8 @@
 /* Includes ------------------------------------------------------------------*/
 #include "usbh_hid_keybd.h"
 #include "usbh_hid_parser.h"
+#include "stm32l4xx_hal.h"
+#include "global_var.h"
 
 /** @addtogroup USBH_LIB
 * @{
@@ -433,95 +435,18 @@ const uint8_t symKeysLo[12] = {'-', '=', '[', ']', '\\', ' ', ';', '\'', '`', ',
 const uint8_t padKeys[5] = {'/', '*', '-', '+', 0x13};
 
 
-void HID_KEYBRD_Handler(HID_KEYBD_Info_TypeDef *info, uint8_t* keys_arr)
+void HID_KEYBRD_Handler(HID_KEYBD_Info_TypeDef *info)
 {
-  uint8_t shift = (info->lshift == 1) || (info->rshift);
-
 
   // on error - return;
   if (info->keys[0] == 1)
 	  return;
 
-  for (uint8_t i = 0; i < 6; i++){
-	  keys_arr[i] = 0;
-	  uint8_t key = info->keys[i];
-	  uint8_t down = 0;
-	  uint8_t up = 0;
+  uint8_t state = (info->rgui & 1) << 7 | (info->ralt & 1) << 6 | (info->rshift & 1) << 5 | (info->rctrl & 1) << 4  |
+				   (info->lgui & 1) << 3 | (info->lalt & 1) << 2 | (info->lshift & 1) << 1 | (info->lctrl & 1) << 0;
+  uint8_t report[12] = {0xC, 0x0, 0xA1, 0x1, state ,0x0, info->keys[0], info->keys[1], info->keys[2], info->keys[3], info->keys[4], info->keys[5]};
+  HAL_UART_Transmit(&huart3, report, 12, 1000);
 
-	  for (uint8_t j = 0; j < 6; j++){
-		  if((info->keys[i] == keybd_prev_info.keys[j]) && info->keys[i] != 1){
-			  down = 1;
-		  }
-		  if((info->keys[j] == keybd_prev_info.keys[i]) && keybd_prev_info.keys[i] != 1){
-			  up = 1;
-		  }
-	  }
-	  // check if error
-	  if(key != 1 && !down){
-			  // [a-Z]
-			  if(key >= KEY_A && key <= KEY_Z){
-				  if((!keybd_leds.CapsLock && shift) || (keybd_leds.CapsLock && !shift)){
-					  keys_arr[i] =  (key - 4 + 'A');
-					  continue;
-				  }
-				  else{
-					  keys_arr[i] =  (key - 4 + 'a');
-					  continue;
-				  }
-			  }
-			  // numbers
-			  else if (key >= KEY_1_EXCLAMATION_MARK && key <= KEY_0_CPARENTHESIS){
-				  if(shift){
-					  keys_arr[i] =  numKeys[key - KEY_1_EXCLAMATION_MARK];
-					  continue;
-				  }
-				  else{
-					  keys_arr[i] =  ((key == KEY_0_CPARENTHESIS) ? '0': key - KEY_1_EXCLAMATION_MARK + '1');
-					  continue;
-				  }
-			  }
-			  // keypad numbers
-			  else if(key >= KEY_KEYPAD_1_END && key <= KEY_KEYPAD_9_PAGEUP){
-				  if(keybd_leds.NumLock) {
-					  keys_arr[i] = (key - KEY_KEYPAD_1_END + '1');
-					  continue;
-				  }
-			  }
-			  // other keys
-			  else if(key >= KEY_MINUS_UNDERSCORE && key <= KEY_SLASH_QUESTION){
-				  if(shift){
-					  keys_arr[i] = (symKeysUp[key-KEY_MINUS_UNDERSCORE]);
-					  continue;
-				  }
-				  else{
-					  keys_arr[i] = (symKeysLo[key-KEY_MINUS_UNDERSCORE]);
-					  continue;
-				  }
-			  }
-			  else if(key >= KEY_KEYPAD_SLASH && key <= KEY_KEYPAD_ENTER){
-				  keys_arr[i] = (padKeys[key-KEY_KEYPAD_SLASH]);
-				  continue;
-			  }
-			  else {
-				  switch(key) {
-				  case KEY_SPACEBAR: keys_arr[i] = (' '); continue;
-				  case KEY_ENTER: keys_arr[i] = ('\n'); continue;
-				  case KEY_KEYPAD_0_INSERT: keys_arr[i] = '0'; continue;
-				  case KEY_KEYPAD_DECIMAL_SEPARATOR_DELETE: keys_arr[i] = '.'; continue;
-				  case KEY_TAB: keys_arr[i] = '\t'; continue;
-				  case KEY_BACKSPACE: keys_arr[i] = 0x08; continue;
-				  case KEY_ESCAPE: keys_arr[i] = '\e'; continue;
-				  case KEY_CAPS_LOCK: keybd_leds.CapsLock ^= 1; break;
-				  case KEY_KEYPAD_NUM_LOCK_AND_CLEAR: keybd_leds.NumLock ^= 1; break;
-				  case KEY_SCROLL_LOCK: keybd_leds.ScrollLock ^= 1; break;
-				  default:  keys_arr[i] = 0;
-				  }
-			  }
-	  }
-  }
-  for (uint8_t i = 0; i < 6; i++){
-	  keybd_prev_info.keys[i] = info->keys[i];
-  }
   return;
 }
 

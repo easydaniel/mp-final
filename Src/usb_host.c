@@ -52,7 +52,6 @@
 /* USB Host Core handle declaration */
 USBH_HandleTypeDef hUsbHostFS;
 ApplicationTypeDef Appli_state = APPLICATION_IDLE;
-HID_KEYBD_Info_TypeDef* kb_info;
 
 /**
 * -- Insert your variables declaration here --
@@ -60,7 +59,13 @@ HID_KEYBD_Info_TypeDef* kb_info;
 /* USER CODE BEGIN 0 */
 void USBH_HID_EventCallback(USBH_HandleTypeDef *phost) {
 	Increase();
-
+	HID_KEYBD_Info_TypeDef* kb_info;
+	if (phost->pActiveClass->BgndProcess(phost) == USBH_OK) {
+		if (kb_info = USBH_HID_GetKeybdInfo(phost)) {
+			HID_KEYBRD_Handler(kb_info);
+			return;
+		}
+	}
 }
 /* USER CODE END 0 */
 

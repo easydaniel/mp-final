@@ -11,5 +11,6 @@
 int status;
 int stamina_red;
 int stamina_green;
+UART_HandleTypeDef huart3;
 
 #endif /* GLOBAL_VAR_H_ */
