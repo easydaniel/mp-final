@@ -47,6 +47,7 @@
 #include "usb_host.h"
 #include "usbh_core.h"
 #include "usbh_hid.h"
+#include "global_var.h"
 
 /* USB Host Core handle declaration */
 USBH_HandleTypeDef hUsbHostFS;
@@ -58,7 +59,7 @@ HID_KEYBD_Info_TypeDef* kb_info;
 */ 
 /* USER CODE BEGIN 0 */
 void USBH_HID_EventCallback(USBH_HandleTypeDef *phost) {
-
+	Increase();
 }
 /* USER CODE END 0 */
 
@@ -94,20 +95,21 @@ void MX_USB_HOST_Process()
     USBH_Process(&hUsbHostFS);
 	if (hUsbHostFS.device.is_connected) {
 		if (hUsbHostFS.gState == HOST_CLASS) {
-			if (hUsbHostFS.pActiveClass->BgndProcess(&hUsbHostFS) == USBH_OK) {
-				if (kb_info = USBH_HID_GetKeybdInfo(&hUsbHostFS)) {
-//					HID_KEYBRD_Handler(kb_info, buf);
-					return;
-				}
-			} else {
-				puts("Not Active");
+			if (status == 1) {
+				Set_Color(0, 256, 0);
+				stamina_red = 0;
+				stamina_green = 256;
+				status = 2;
 			}
 		} else {
-			printf("gState = %d\n", hUsbHostFS.gState);
+			if (status == 0) {
+				Set_Color(192, 168, 53);
+				status = 1;
+			}
 		}
 	} else {
-		MX_USB_HOST_Init();
-		puts("Not Connected");
+		status = 0;
+		Breath();
 	}
 	return;
 }

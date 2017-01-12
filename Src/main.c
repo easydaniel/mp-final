@@ -44,12 +44,12 @@
 #include "main.h"
 #include "stm32l4xx_hal.h"
 #include "usb_host.h"
+#include "global_var.h"
 #include <stdio.h>
 #include <stdlib.h>
 
 
 /* USER CODE BEGIN Includes */
-extern void initialise_monitor_handles(void);
 /* USER CODE END Includes */
 
 /* Private variables ---------------------------------------------------------*/
@@ -57,7 +57,7 @@ UART_HandleTypeDef huart3;
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-
+status = 0;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -96,7 +96,8 @@ int main(void)
   MX_USB_HOST_Init();
 
   /* USER CODE BEGIN 2 */
-
+  Timer_Init();
+  PWM_Init();
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -251,11 +252,126 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
 
-
+  /* PB6,8,9 TIM4->CH1,3,4 */
+  GPIO_InitStruct.Pin = GPIO_PIN_6 | GPIO_PIN_8 | GPIO_PIN_9;
+	GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+	GPIO_InitStruct.Pull = GPIO_NOPULL;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+	GPIO_InitStruct.Alternate = GPIO_AF2_TIM2;
+	HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 }
 
 /* USER CODE BEGIN 4 */
+void TIM3_IRQHandler() {
+	if (status == 2) {
+		Decrease();
+	}
+	TIM3->SR &= ~TIM_SR_UIF;
+}
+
+void Increase() {
+	if (stamina_red < 256) {
+		stamina_red += 8;
+	} else {
+		stamina_red = 256;
+	}
+	if (stamina_green > 0) {
+		stamina_green -= 8;
+	}
+	if (stamina_green < 0) {
+		stamina_green = 0;
+	}
+	Set_Color(stamina_red, stamina_green, 0);
+}
+
+void Decrease() {
+	if (stamina_green < 256) {
+		stamina_green += 4;
+	} else {
+		stamina_green = 256;
+	}
+	if (stamina_red > 0) {
+		stamina_red -= 4;
+	}
+	if (stamina_red < 0) {
+		stamina_red = 0;
+	}
+	Set_Color(stamina_red, stamina_green, 0);
+}
+
+void Breath() {
+	uint32_t red = rand() % 256;
+	uint32_t green = rand() % 256;
+	uint32_t blue = rand() % 256;
+	uint32_t red_cnt = 0;
+	uint32_t blue_cnt = 0;
+	uint32_t green_cnt = 0;
+	int count = 0;
+	while (count < 500) {
+		count++;
+		red_cnt += red / 5;
+		green_cnt += green / 5;
+		blue_cnt += blue / 5;
+		TIM4->CCR1 = (uint32_t)(red_cnt);
+		TIM4->CCR3 = (uint32_t)(green_cnt);
+		TIM4->CCR4 = (uint32_t)(blue_cnt);
+		HAL_Delay(2);
+	}
+	while (count > 0) {
+		count--;
+		red_cnt -= red / 5;
+		green_cnt -= green / 5;
+		blue_cnt -= blue / 5;
+		if (red_cnt < 0) {
+			red_cnt = 0;
+		}
+		if (green_cnt < 0) {
+			green_cnt = 0;
+		}
+		if (blue_cnt < 0) {
+			blue_cnt = 0;
+		}
+		TIM4->CCR1 = (uint32_t)(red_cnt);
+		TIM4->CCR3 = (uint32_t)(green_cnt);
+		TIM4->CCR4 = (uint32_t)(blue_cnt);
+		HAL_Delay(2);
+	}
+	Set_Color(0, 0, 0);
+}
+
+void Set_Color(uint32_t red, uint32_t green, uint32_t blue) {
+	TIM4->CCR1 = (uint32_t)(red * 100);
+	TIM4->CCR3 = (uint32_t)(green * 100);
+	TIM4->CCR4 = (uint32_t)(blue * 100);
+}
+
+void Timer_Init() {
+	RCC->APB1ENR1 |= RCC_APB1ENR1_TIM4EN | RCC_APB1ENR1_TIM3EN;
+	TIM4->PSC = (uint32_t)(1 - 1);
+	TIM4->ARR = (uint32_t)(25601);
+	TIM4->EGR = TIM_EGR_UG;
+	TIM4->CR1 |= TIM_CR1_CEN;
+
+	TIM3->PSC = (uint32_t)(1600 - 1);
+	TIM3->ARR = (uint32_t)(500 - 1);
+	TIM3->EGR = TIM_EGR_UG;
+	TIM3->DIER = TIM_DIER_UIE;
+	TIM3->CR1 |= TIM_CR1_CEN;
+
+	NVIC_EnableIRQ(TIM3_IRQn);
+	NVIC_SetPriority(TIM3_IRQn, 10);
+}
+
+void PWM_Init() {
+	TIM4->CCMR1 |= TIM_CCMR1_OC1PE | TIM_CCMR1_OC1M;
+	TIM4->CCMR2 |= TIM_CCMR2_OC3PE | TIM_CCMR2_OC3M | TIM_CCMR2_OC4PE | TIM_CCMR2_OC4M;
+	TIM4->CCER |= TIM_CCER_CC1E | TIM_CCER_CC3E | TIM_CCER_CC4E;
+	TIM4->CCR1 = (uint32_t)(1 - 1);
+	TIM4->CCR3 = (uint32_t)(1 - 1);
+	TIM4->CCR4 = (uint32_t)(1 - 1);
+}
+
 
 /* USER CODE END 4 */
 
